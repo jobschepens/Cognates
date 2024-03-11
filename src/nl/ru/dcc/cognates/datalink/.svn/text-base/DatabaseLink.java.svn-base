@@ -1,0 +1,127 @@
+package nl.ru.dcc.cognates.comparison;
+
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.Collections;
+import java.util.Vector;
+
+import nl.ru.dcc.cognates.AbstractLinguisticData;
+import nl.ru.dcc.cognates.LinguisticData;
+import nl.ru.dcc.cognates.frequencies.Lexicon;
+import nl.ru.dcc.cognates.semantics.Simulator;
+import nl.ru.dcc.cognates.types.Info;
+
+public class Comparison extends AbstractLinguisticData implements
+		LinguisticData {
+
+	private Simulator simulation;
+	private Lexicon destinationLexicon;
+	private Lexicon sourceLexicon;
+
+	public Comparison(Simulator s, Lexicon src, Lexicon des) {
+		super();
+		l1 = s.getL1();
+		l2 = s.getL2();
+		simulation = s;
+		sourceLexicon = src;
+		destinationLexicon = des;
+	}
+	public void obtainData() throws Exception {
+		LOGGER.info("Comparing: " + l1 + "-" + l2);
+		int x=0, y=0, z=0, yz=0, s=0;
+		//number of double matches (x), source matches (y), destination matches (z), no matches (yz), 
+		//number of equal source expressions (s) 
+		Integer sourceID=0, previousSourceID=0;
+		
+		for (Integer pair:simulation.getTranslations().keySet()) {
+			Info infoTr = simulation.getTranslations().get(pair);
+			
+			previousSourceID = sourceID;
+			
+			sourceID = sourceLexicon.getLemmaCandidate(infoTr, infoTr.getExpression());
+			Integer destinationID = destinationLexicon.getLemmaCandidate(infoTr, infoTr.getTranslation());
+			
+			if (sourceID != -1 && destinationID != -1) {
+				
+				infoTr.setSourceID(sourceID);
+				infoTr.setDestinationID(destinationID);
+				
+				if(previousSourceID.equals(sourceID)) {
+					System.out.println("s" + s);
+					s=s+1;
+				} 
+				else s=0;
+				
+				Integer newID = computeNewID(s, sourceID, previousSourceID);
+				
+				if(linguisticData.containsKey(newID))
+			        throw new RuntimeException("Duplicate expression '"+newID+"'");
+				//TODO Syntax, store in data file
+				linguisticData.put(newID, infoTr);
+				x++;
+			}
+			if (sourceID != -1 && destinationID == -1) y++;
+			if (sourceID == -1 && destinationID != -1) z++;
+			if (sourceID == -1 && destinationID == -1) yz++;  
+		}
+		
+		LOGGER.info(sourceLexicon.getNumberOfConflicts() + " found more than once in " + l1 + " lexicon");
+		LOGGER.info(destinationLexicon.getNumberOfConflicts() + " found more than once in " + l2 + " lexicon");
+		LOGGER.info(y + " found in " + l1 + " lexicon only");
+		LOGGER.info(z + " found in " + l2 + " lexicon only");
+		LOGGER.info("Obtained " + x + " matches\n");
+	}
+	private Integer computeNewID(Integer s, Integer sourceID, Integer previousSourceID) {
+		
+		Integer addZeros = MAXCOMPARED - sourceID.toString().length();
+		addZeros = addZeros - s.toString().length();
+		String zeros = "";
+		for (int i=0; i<addZeros; i++) {
+			zeros=zeros+"0";
+		}
+		Integer newID = Integer.valueOf(sourceID.toString()+zeros+s);
+		return newID;
+	}
+	
+	public void sortAndPrintComparison(Lexicon source, Lexicon destination) {
+		LOGGER.info("Printing and sorting" + linguisticData.size() + " values");
+		Vector<Integer> v = new Vector<Integer>(linguisticData.keySet());
+		Collections.sort(v);
+		
+		for (Integer pair:v) {
+			LOGGER.info(linguisticData.get(pair).getPrintInfoDictionary());
+			LOGGER.info(source.getFrequencyFromLexicon(linguisticData.get(pair).getSourceID()).toInteger() + " " + 
+				   destination.getFrequencyFromLexicon(linguisticData.get(pair).getDestinationID()).toInteger());
+		}
+		
+		LOGGER.info("Printed "+linguisticData.size()+" translations.");
+	}
+	
+	public void export(Lexicon source, Lexicon destination) {
+		try
+	    {
+	      BufferedWriter cognateWriter=new BufferedWriter(new FileWriter("results/cognates "+l1+" "+l2+".out"));
+	      Vector<Integer> v=new Vector<Integer>(linguisticData.keySet());
+	      Collections.sort(v);
+	      
+	      for (Integer id:v) {
+	    	  cognateWriter.write(
+	    			  //expression, translation, abc, source syntax, dest syntax, distance, source length, destination length
+	    			  linguisticData.get(id).getPrintInfoDictionary() + "\t" + 
+	    			  //source frequency
+	    			  source.getFrequencyFromLexicon(linguisticData.get(id).getSourceID()).toInteger() + "\t" +
+	    			  //destination frequency
+					  destination.getFrequencyFromLexicon(linguisticData.get(id).getDestinationID()).toInteger());
+	    	  cognateWriter.newLine();
+	      }
+	      
+	      cognateWriter.close();
+	    }
+	    catch(IOException e1)
+	    {
+	      e1.printStackTrace();
+	    }
+	    LOGGER.info("Exported "+linguisticData.size()+" compared cognates.\n");
+	}
+}

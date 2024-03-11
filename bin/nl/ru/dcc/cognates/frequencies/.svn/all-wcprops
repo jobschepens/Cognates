@@ -1,0 +1,53 @@
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/job/!svn/ver/249/Cognates/src/nl/ru/dcc/cognates/frequencies
+END
+Lexicon.java
+K 25
+svn:wc:ra_dav:version-url
+V 74
+/job/!svn/ver/223/Cognates/src/nl/ru/dcc/cognates/frequencies/Lexicon.java
+END
+LexiqueFrequencies.java
+K 25
+svn:wc:ra_dav:version-url
+V 85
+/job/!svn/ver/265/Cognates/src/nl/ru/dcc/cognates/frequencies/LexiqueFrequencies.java
+END
+BPalFrequencies.java
+K 25
+svn:wc:ra_dav:version-url
+V 82
+/job/!svn/ver/249/Cognates/src/nl/ru/dcc/cognates/frequencies/BPalFrequencies.java
+END
+SUBTLEXusFrequencies.java
+K 25
+svn:wc:ra_dav:version-url
+V 87
+/job/!svn/ver/223/Cognates/src/nl/ru/dcc/cognates/frequencies/SUBTLEXusFrequencies.java
+END
+CoLFISFrequencies.java
+K 25
+svn:wc:ra_dav:version-url
+V 84
+/job/!svn/ver/265/Cognates/src/nl/ru/dcc/cognates/frequencies/CoLFISFrequencies.java
+END
+CelexFrequencies.java
+K 25
+svn:wc:ra_dav:version-url
+V 83
+/job/!svn/ver/265/Cognates/src/nl/ru/dcc/cognates/frequencies/CelexFrequencies.java
+END
+FrequencyStatistics.java
+K 25
+svn:wc:ra_dav:version-url
+V 86
+/job/!svn/ver/223/Cognates/src/nl/ru/dcc/cognates/frequencies/FrequencyStatistics.java
+END
+AllLanguagesNameCoder.java
+K 25
+svn:wc:ra_dav:version-url
+V 88
+/job/!svn/ver/194/Cognates/src/nl/ru/dcc/cognates/frequencies/AllLanguagesNameCoder.java
+END

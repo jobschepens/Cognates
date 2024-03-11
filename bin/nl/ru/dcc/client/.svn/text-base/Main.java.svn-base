@@ -1,0 +1,544 @@
+package nl.ru.dcc.client;
+//
+//-Xmx1024m
+//-XX:PermSize=128m 
+//-XX:MaxPermSize=128m 
+
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Scanner;
+
+import org.apache.log4j.BasicConfigurator;
+import org.apache.log4j.ConsoleAppender;
+import org.apache.log4j.SimpleLayout;
+
+import nl.ru.dcc.cognates.datalink.LinkedData;
+import nl.ru.dcc.cognates.exceptions.FregTypeException;
+import nl.ru.dcc.cognates.exceptions.TooManyTranslationsException;
+import nl.ru.dcc.cognates.frequencies.BPalFrequencies;
+import nl.ru.dcc.cognates.frequencies.CelexFrequencies;
+import nl.ru.dcc.cognates.frequencies.CoLFISFrequencies;
+import nl.ru.dcc.cognates.frequencies.Lexicon;
+import nl.ru.dcc.cognates.frequencies.LexiqueFrequencies;
+//import nl.ru.dcc.cognates.frequencies.SUBTLEXusFrequencies;
+import nl.ru.dcc.cognates.semantics.Translations;
+import nl.ru.dcc.cognates.semantics.FalseFriends;
+import nl.ru.dcc.cognates.semantics.Homographs;
+import nl.ru.dcc.cognates.semantics.Semantics;
+import nl.ru.dcc.cognates.semantics.WordPairs;
+import nl.ru.dcc.cognates.semantics.dictionary.DictionaryReaderException;
+/**
+ * @author job
+ * Driver class
+ */
+public class Main
+{
+	private static String date = getDateString("MMM_dd");
+	private static Integer simulationStart = 1;
+	
+	//parameters and thresholds
+	private static int minLength = 3;
+	private static int maxLength = 8; 
+	private static int maxTranslationPairs = 200000;
+	private static boolean countMatches=false;
+	
+	//word sources
+	private static String inputFilename="similarityratings.txt";
+//	private static String inputFilename="single.txt";
+	
+	/*unparameterized settings
+	equal syntax off
+	P or O off
+	only a translations on
+	include NA off
+	*/
+	
+	
+  /**
+   * @param args arguments to program (ignored)
+   * @throws Exception 
+   */
+  public static void main(String args[]) throws Exception
+  {
+	BasicConfigurator.configure(new ConsoleAppender(new SimpleLayout()));
+	long start = System.currentTimeMillis();
+	
+	System.out.println("Welcome");
+	Scanner in = new Scanner(System.in);
+	
+	System.out.println("Is this a test run? y/n.");
+	
+	String test = in.nextLine();
+	if (!test.equals("y")) {
+		simulate(in);
+	} else {
+		List<Language> languages = new ArrayList<Language>();
+		languages.add(Language.Dutch);
+		languages.add(Language.English);
+		Lexicon[] frequencies = selectLexicons(languages, "Lemma", 0.0, 5.0);
+		linkFrequenciesToWordpairs(simulationStart,languages, frequencies, 
+				"translations", "Lemma", 5, "word pairs", 0.5, 0.0, 5.0, 200);
+	}
+
+	System.out.println("Time taken: "+ ((System.currentTimeMillis()-start)/1000)/60 + "m");
+  }
+
+/**
+ * @param date
+ * @throws FregTypeException
+ * @throws Exception
+ */
+private static void simulate(Scanner in) throws FregTypeException, Exception {
+   
+	printDefaultParameters();
+	System.out.println("Use default parameters (word length, etc.)? y/n.");
+	String defaultParams = in.nextLine();
+	if (!defaultParams.equals("y")) {
+		chooseParameters(in);
+	} 	
+	System.out.println("\nHow many simulations do you want to run?");
+	Integer numberOfSimulations = Integer.valueOf(in.nextLine());
+	
+	List<List<Language>> languageConfigs = new ArrayList<List<Language>>();
+	List<String> wordTypeConfigs = new ArrayList<String>();
+	List<String> freqTypeConfigs = new ArrayList<String>();
+	List<Double> simRangeConfigs = new ArrayList<Double>();
+	List<String> wordSourceConfigs = new ArrayList<String>();
+	List<Double> oThresholdConfigs = new ArrayList<Double>();
+	List<Double> pThresholdConfigs = new ArrayList<Double>();
+	List<Double> fThresholdConfigs = new ArrayList<Double>();
+	List<Double> maxFDiffConfigs = new ArrayList<Double>();
+	for (Integer currentSimulation=0;currentSimulation<numberOfSimulations;currentSimulation++) {
+//		System.out.print("simulation " + (simulationStart+currentSimulation) + ": ");
+//		String wordSource = chooseWordSources(in);
+		String wordSource = "Euroglot";
+//		String wordSource = "single words";
+//		String wordSource = "word pairs";
+//		System.out.print("simulation " + (simulationStart+currentSimulation) + ": ");
+//		List<Language> languages = chooseLanguages(in);
+		List<Language> languages = new ArrayList<Language>();;
+		for (Language l:Language.values()) {
+			languages.add(l);
+		}
+//		System.out.print("simulation " + (simulationStart+currentSimulation) + ": ");
+//		String wordType = chooseWordType(in, wordSource);
+		String wordType = "translations";
+//		System.out.print("simulation " + (simulationStart+currentSimulation) + ": ");
+//		String freqType = chooseFreqType(in);
+		String freqType = "Lemma";
+//		System.out.print("simulation " + (simulationStart+currentSimulation) + ": ");
+//		double simRange = chooseSimRange(in);
+		double simRange = 5;
+//		System.out.print("simulation " + (simulationStart+currentSimulation) + ": ");
+		double oThreshold = chooseThreshold(in, "orthographic similarity");
+//		double oThreshold = .0;
+//		System.out.print("simulation " + (simulationStart+currentSimulation) + ": ");
+		double pThreshold = chooseThreshold(in, "phonetic similarity");
+//		double pThreshold = .0;
+//		System.out.print("simulation " + (simulationStart+currentSimulation) + ": ");
+		double fThreshold = chooseThreshold(in, "frequency");
+//		double fThreshold = 10;
+//		System.out.print("simulation " + (simulationStart+currentSimulation) + ": ");
+//		double maxFDiff = chooseThreshold(in, "frequency difference");
+		double maxFDiff = 1000000;
+		wordSourceConfigs.add(wordSource);
+		languageConfigs.add(languages);
+		wordTypeConfigs.add(wordType);
+		freqTypeConfigs.add(freqType);
+		simRangeConfigs.add(simRange);
+		oThresholdConfigs.add(oThreshold);
+		pThresholdConfigs.add(pThreshold);
+		fThresholdConfigs.add(fThreshold);
+		maxFDiffConfigs.add(maxFDiff);
+	}
+	
+	System.out.println("\nThank you, all simulations have been configured correctly.\n" +
+			"Please wait and enjoy a cup of coffee while data is being collected for you.\n");
+	Lexicon[] frequencies;
+	for (Integer currentSimulation=0;currentSimulation<numberOfSimulations;currentSimulation++) {
+		frequencies = selectLexicons(languageConfigs.get(currentSimulation), 
+				freqTypeConfigs.get(currentSimulation), oThresholdConfigs.get(currentSimulation),
+				fThresholdConfigs.get(currentSimulation));
+		frequencies[0].printParams(currentSimulation+simulationStart);
+
+		linkFrequenciesToWordpairs(currentSimulation+simulationStart, languageConfigs.get(currentSimulation), frequencies,
+				wordTypeConfigs.get(currentSimulation),freqTypeConfigs.get(currentSimulation), 
+				simRangeConfigs.get(currentSimulation), wordSourceConfigs.get(currentSimulation), 
+				oThresholdConfigs.get(currentSimulation), pThresholdConfigs.get(currentSimulation),
+				fThresholdConfigs.get(currentSimulation), maxFDiffConfigs.get(currentSimulation));
+	}
+}
+
+/**
+ * 
+ */
+private static void printDefaultParameters() {
+	System.out.println("Starting simulation number: " + simulationStart + "\n\n");
+	
+	System.out.println("Default paramters (all thresholds are inclusive)");
+	System.out.println("MINLENGTH: " + minLength);
+	System.out.println("MAXLENGTH: " + maxLength);
+	System.out.println("MAXTRANSLATIONPAIRS: " + maxTranslationPairs + "\n");
+}
+
+
+
+/**
+ * @param in
+ */
+private static void chooseParameters(Scanner in) {
+	//		//##choose your parameters##//
+			System.out.println("What should be the starting simulation number of this session?");
+			simulationStart = Integer.valueOf(in.nextLine());
+			System.out.println("Minimal word length?");
+			minLength = Integer.valueOf(in.nextLine());
+			System.out.println("Maximal word length?");
+			maxLength = Integer.valueOf(in.nextLine());
+//			System.out.println("Minimal word frequency?");
+//			minFrequency = Double.valueOf(in.nextLine());
+//			System.out.println("Minimal orthographic overlap?");
+//			oThreshold = Double.valueOf(in.nextLine());
+//			System.out.println("Minimal phonetic overlap?");
+//			pThreshold = Double.valueOf(in.nextLine());
+			System.out.println("Maximal number of identifiable word pairs?");		
+			maxTranslationPairs = Integer.valueOf(in.nextLine());
+			System.out.println("Only count matches for dictionary items (only useful for calculating recognition rate)? (0/1)");		
+			countMatches = Boolean.valueOf(in.nextLine());
+
+			System.out.println("Thank you for choosing your own parameters.\n");
+}
+
+/**
+ * @param in2 
+ * @return
+ */
+private static String chooseWordSources(Scanner in2) {
+	System.out.println("Use source expressions from \"lexicons\"(1), \"a small database\"(2), " +
+	"or your own file with \"single words\"(3), or \"word pairs\"(4)?");
+	Integer source = Integer.valueOf(in2.nextLine());
+	String wordSource = null;
+	if (source == 1)
+		wordSource = "Euroglot";
+	if (source == 2)
+		wordSource = "limited";
+	if (source == 3) {
+		wordSource = "single words";
+		System.out.println("Make sure that you file is stored in /data.");
+		System.out.println("What is the \"filename\" of your wordlist (don't forget the extension)?");
+		inputFilename = in2.nextLine();
+	}
+	if (source == 4) {
+		wordSource = "word pairs";
+		System.out.println("Make sure that you file is stored in /data.");
+		System.out.println("Is the \"filename\" of your wordlist \"similarityratings.txt\"? y/n");
+		String ratings = in2.nextLine();
+		if (ratings.equals("y")) {
+			inputFilename = "similarityratings.txt";
+		} else {
+			System.out.println("Is the \"filename\" of your wordlist \"Dijkstra.txt\"? y/n");
+			ratings = in2.nextLine();
+			if (ratings.equals("y")) {
+				inputFilename = "Dijkstra.txt";
+			} else {
+				System.out.println("What is the \"filename\" of your wordlist (don't forget the extension)?");
+				inputFilename = in2.nextLine();
+			}
+		}
+	}
+	return wordSource;
+}
+
+/**
+ * @param in2 
+ * @return
+ */
+private static String chooseFreqType(Scanner in2) {
+	System.out.println("\"Lemma\"(1) or \"Word forms\"(2)?");
+	Integer type = Integer.valueOf(in2.nextLine());
+	String freqType=null;
+	if (type == 1)
+		freqType= "Lemma";
+	if (type == 2)
+		freqType = "Word forms";
+	return freqType;
+}
+
+/**
+ * @param in
+ * @return
+ */
+private static double chooseSimRange(Scanner in) {
+	System.out.println("Please enter euclidian phoneme space distance for substitiution cost of 1\n");
+	System.out.println("\tExplanation: \n" +
+			"an Euclidean distance is calculated using a pre-defined phoneme space. \n" +
+			"The consonant phoneme space has 8 steps on the manner dimension and 10 steps on the place dimension. \n" +
+			"The vowel phoneme space has 7 steps on height and 3 steps on backness.\n" +
+			"For example, the substitution of /t/ at position (0,3) with /s/ at position (4,3) would cost 1 \n" +
+			"if the normalization coefficient is set at 5.");
+	Double type = Double.valueOf(in.nextLine());
+	return type;
+}
+
+/**
+ * @param in
+ * @return
+ */
+private static double chooseThreshold(Scanner in, String type) {
+	System.out.println("Please enter " + type + " threshold\n");
+	Double threshold = Double.valueOf(in.nextLine());
+	return threshold;
+}
+
+/**
+ * @param in2 
+ * @return
+ */
+private static String chooseWordType(Scanner in2, String wordSource) {
+	System.out.println("\"translations\"(1), \"false friends\"(2), \"homographs\"(3) ");
+	Integer wordType = Integer.valueOf(in2.nextLine());
+	String type = null;
+	if (wordType == 1)
+		type = "translations";
+	if (wordType == 2) {
+		type = "false friends";
+		if (wordSource.equals("single words") || wordSource.equals("word list")) {
+			System.out.println("false friends for wordlists is not yet implemented, " +
+					"computing false friends using dictionary\n");
+		}
+	}
+	if (wordType == 3) {
+		type = "homographs";
+		if (wordSource.equals("single words") || wordSource.equals("word list")) {
+			System.out.println("homographs for wordlists is not yet implemented," +
+					"computing homographs using dictionary\n");
+		}
+	}
+	return type;
+}
+
+/**
+ * @param in
+ * @return
+ */
+private static List<Language> chooseLanguages(Scanner in) {
+	System.out.println(
+			"\"English-Dutch\"(1), " +
+			"\"Dutch-English\"(2), " +
+			"\"all languages\"(3), " +
+			"\"English-English\"(4) or " +
+			"\"Dutch-Dutch\"(5) or " +
+			"\"German-German\"(6) or " +
+			"\"French-French\"(7) or " +
+			"\"Spanish-Spanish\"(8) or " +
+			"\"Italian-Italian\"(9) or " +
+			"\"Italian-Spanish\"(10) ?");
+	Integer languageChoise = Integer.valueOf(in.nextLine());
+	List<Language> language = new ArrayList<Language>();
+	if (languageChoise == 1) {
+		language.add(Language.English);
+		language.add(Language.Dutch);
+		return language;
+	}
+	if (languageChoise == 2) {
+		language.add(Language.Dutch);
+		language.add(Language.English);
+		return language;
+	}
+	if (languageChoise == 3) {
+		for (Language l:Language.values()) {
+			language.add(l);
+		}
+		return language;
+	}
+	if (languageChoise == 4) {
+		language.add(Language.English);
+		language.add(Language.English);
+		return language;
+	}
+	if (languageChoise == 5) {
+		language.add(Language.Dutch);
+		language.add(Language.Dutch);
+		return language;
+	}
+	if (languageChoise == 6) {
+		language.add(Language.German);
+		language.add(Language.German);
+		return language;
+	}
+	if (languageChoise == 7) {
+		language.add(Language.French);
+		language.add(Language.French);
+		return language;
+	}
+	if (languageChoise == 8) {
+		language.add(Language.Spanish);
+		language.add(Language.Spanish);
+		return language;
+	}
+	if (languageChoise == 9) {
+		language.add(Language.Italian);
+		language.add(Language.Italian);
+		return language;
+	}
+	if (languageChoise == 10) {
+		language.add(Language.Italian);
+		language.add(Language.Spanish);
+		return language;
+	}
+	return language;
+}
+
+
+/**
+ * constructs required frequency containers first, <p>
+ * and then imports them from specified lexicons into the bins 
+ * @param language
+ * @param freqType 
+ * @return
+ * @throws FregTypeException
+ */
+private static Lexicon[] selectLexicons(List<Language> language, String freqType, 
+		double oThreshold, double fThreshold) throws FregTypeException {
+
+	Lexicon[] frequencies = new Lexicon[language.size()];
+	for (int i=0; i<language.size(); i++) {
+		Language l=language.get(i);
+		
+		//##choose the source of your frequencies##//
+		switch (l) {
+			case Dutch:
+				frequencies[i] = new CelexFrequencies(l, maxTranslationPairs, oThreshold, minLength, 
+						maxLength, fThreshold, freqType);
+				break;
+			case English:
+				frequencies[i] = new CelexFrequencies(l, maxTranslationPairs, oThreshold, minLength, 
+						maxLength, fThreshold, freqType);
+//				frequencies[i] = new SUBTLEXusFrequencies(l, maxTranslationPairs, oThreshold, minLength, 
+//						maxLength, fThreshold, freqType);
+				break;
+			case German:
+				frequencies[i] = new CelexFrequencies(l, maxTranslationPairs, oThreshold, minLength, 
+						maxLength, fThreshold, freqType);
+				break;
+			case French:
+				frequencies[i] = new LexiqueFrequencies(l, maxTranslationPairs, oThreshold, minLength, 
+						maxLength, fThreshold, freqType);
+				break;
+			case Italian:
+				frequencies[i] = new CoLFISFrequencies(l, maxTranslationPairs, oThreshold, minLength, 
+						maxLength, fThreshold, freqType);
+				break;
+			case Spanish:
+				frequencies[i] = new BPalFrequencies(l, maxTranslationPairs, oThreshold, minLength, 
+						maxLength, fThreshold, freqType);
+				break;
+			}
+		if (frequencies[i]!=null)
+			frequencies[i].importFrequencies();
+	}
+	return frequencies;
+}
+
+/**
+ * @param simulationNumber
+ * @param language
+ * @param frequencies2 
+ * @param wordType
+ * @param freqType
+ * @param simRange
+ * @param wordSource
+ * @param maxFDiff 
+ * @param double2 
+ * @param double1 
+ * @throws Exception
+ */
+private static void linkFrequenciesToWordpairs(int simulationNumber, List<Language> language, 
+		Lexicon[] frequencies, String wordType, String freqType, double simRange, String wordSource, 
+		Double oThreshold, Double pThreshold, Double fThreshold, double maxFDiff) throws Exception {
+	  
+	  int exportNumber=1;
+	  LinkedData[][] dataLink = new LinkedData[language.size()][language.size()];
+	  for (int i=0;i<language.size();i++) {
+		  if (frequencies[i]!=null) {
+			  for (int j=0;j<language.size();j++) {
+				  if (frequencies[j]!=null) {
+//					  if (i!=j) { //both ways
+					  if (i<j) {  //single way
+//					  if (i<=j) { //including intra language comparisons
+//						  wordlistname = date + "/translations_" + (simulationNumber-1) + "_" + exportNumber + ".txt";
+						  Semantics wordpairs= getWordPairs(language.get(i), language.get(j), 
+								  wordType, freqType, simRange, wordSource, oThreshold, fThreshold);
+						  dataLink[i][j] = new LinkedData(language.get(i),language.get(j), 
+								  maxTranslationPairs, oThreshold, pThreshold, minLength, maxLength, 
+								  fThreshold, freqType, countMatches, simRange, maxFDiff);
+						  dataLink[i][j].matchAllTranslations(frequencies[i], frequencies[j], wordpairs );
+						  dataLink[i][j].listExporter(simulationNumber, exportNumber, date, wordType, 
+								  frequencies[i],frequencies[j], wordpairs);
+						  exportNumber++;
+						  dataLink[i][j] = null;
+					  }
+				  }
+			  }
+		  }
+	  }
+}
+
+/**
+ * @param l1
+ * @param l2
+ * @param wordType
+ * @param freqType
+ * @return
+ * @throws DictionaryReaderException
+ * @throws TooManyTranslationsException
+ */
+private static Semantics getWordPairs(Language l1, Language l2, 
+		  String wordType, String freqType, double simRange, String wordSource, 
+		  double oThreshold, double fThreshold) 
+		  throws DictionaryReaderException, TooManyTranslationsException {
+	Semantics wordpairs = null;
+	if (wordType.equals("translations")) {
+		if (wordSource.equals("single words")) {
+			wordpairs = new Translations(l1, l2, 
+					maxTranslationPairs, oThreshold, minLength, maxLength, fThreshold, 
+					freqType, wordType, inputFilename, countMatches, simRange);
+		} else if (wordSource.equals("word pairs")) {
+			wordpairs = new WordPairs(l1, l2, 
+					maxTranslationPairs, oThreshold, minLength, maxLength, fThreshold, 
+					freqType, wordType, inputFilename, wordSource, simRange);
+		} else {
+			wordpairs = new Translations(l1, l2, 
+				  maxTranslationPairs, oThreshold, minLength, maxLength, fThreshold, 
+				  freqType, wordSource, countMatches, simRange);
+		}	
+	}
+	
+	if (wordType.equals("homographs")) {
+		wordpairs = new Homographs(l1, l2, 
+				maxTranslationPairs, oThreshold, minLength, maxLength, fThreshold, 
+				freqType, wordSource, simRange);
+	}
+	if (wordType.equals("false friends")) {
+		wordpairs = new FalseFriends(l1, l2, 
+				maxTranslationPairs, oThreshold, minLength, maxLength, fThreshold, 
+				freqType, wordSource, simRange);
+	}
+	
+	wordpairs.obtainData();
+	return wordpairs;
+}
+
+/**
+ * @param code
+ * @return
+ */
+private static String getDateString(String code) {
+	Date now = new Date();
+	SimpleDateFormat format =
+	    new SimpleDateFormat(code);
+	// See if we can parse the output of Date.toString()
+	return format.format(now);
+}
+}

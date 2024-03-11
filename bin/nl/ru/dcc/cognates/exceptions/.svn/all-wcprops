@@ -1,0 +1,23 @@
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/job/!svn/ver/205/Cognates/src/nl/ru/dcc/cognates/exceptions
+END
+FregTypeException.java
+K 25
+svn:wc:ra_dav:version-url
+V 83
+/job/!svn/ver/153/Cognates/src/nl/ru/dcc/cognates/exceptions/FregTypeException.java
+END
+TooManyTranslationsException.java
+K 25
+svn:wc:ra_dav:version-url
+V 94
+/job/!svn/ver/157/Cognates/src/nl/ru/dcc/cognates/exceptions/TooManyTranslationsException.java
+END
+phonemeNotFoundException.java
+K 25
+svn:wc:ra_dav:version-url
+V 90
+/job/!svn/ver/205/Cognates/src/nl/ru/dcc/cognates/exceptions/phonemeNotFoundException.java
+END

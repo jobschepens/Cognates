@@ -1,0 +1,88 @@
+package nl.ru.dcc.cognates.types;
+
+public class LexicalInfo implements Info {
+
+	private LexiconItem l; 
+	private Syntax sy;
+	private Frequency f;
+//	private Sex se;
+//	private Number n;
+	private int id;
+	private int conflicts;
+	private Phono phon;
+	private Phono text2phon;
+	
+	/**
+	 * @param lemma2
+	 * @param frequency2
+	 * @param id2
+	 * @param syntax2
+	 * @param sex2
+	 * @param number2
+	 * @param phon
+	 * @param text2phon
+	 */
+	public LexicalInfo(LexiconItem lemma2, Frequency frequency2, int id2,
+			Syntax syntax2, Sex sex2, Number number2, Phono phon, Phono text2phon) {
+		this.l = lemma2;
+		this.f = frequency2;
+		this.id = id2;
+		this.sy = syntax2;
+//		this.se = sex2;
+//		this.n = number2;
+		this.conflicts = 0;
+		this.phon = phon;
+		this.text2phon=text2phon;
+	}
+
+//	public String getPrintInfoLexicon() {
+//		return new String(l.toString() + "\t" + f.toDouble() + "\t" 
+//				+ sy + "\t" + se + "\t" + n);
+//	}
+	
+	public Integer getID() {
+		return id;
+	}
+//	
+	public LexiconItem getLexiconItem() {
+		return l;
+	}
+	
+	public Frequency getFrequency() {
+		return f;
+	}
+
+	public void setFrequency(Frequency frequency) {
+		f = frequency;
+	}
+
+	public int getNumberOfCondflicts() {
+		return conflicts;
+	}
+
+	public void setNumberOfConflicts(int moreThanOnce) {
+		conflicts = moreThanOnce;
+	}
+
+	/**
+	 * @return
+	 */
+	public Phono getPhono() {
+		if (phon!=null)	return phon;
+		else return null;
+	}
+
+	/**
+	 * @return the text2phon
+	 */
+	public Phono getText2Speech() {
+		return text2phon;
+	}
+
+	/**
+	 * @return
+	 */
+	public Syntax getLexSyntax() {
+		return this.sy;
+	}
+}

@@ -1,0 +1,29 @@
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/job/!svn/ver/250/Cognates/src/nl/ru/dcc/cognates/distance
+END
+EditDistance.java
+K 25
+svn:wc:ra_dav:version-url
+V 76
+/job/!svn/ver/235/Cognates/src/nl/ru/dcc/cognates/distance/EditDistance.java
+END
+MinimalEditingDistance.java
+K 25
+svn:wc:ra_dav:version-url
+V 86
+/job/!svn/ver/272/Cognates/src/nl/ru/dcc/cognates/distance/MinimalEditingDistance.java
+END
+Substituter.java
+K 25
+svn:wc:ra_dav:version-url
+V 75
+/job/!svn/ver/270/Cognates/src/nl/ru/dcc/cognates/distance/Substituter.java
+END
+AbstractDistance.java
+K 25
+svn:wc:ra_dav:version-url
+V 80
+/job/!svn/ver/189/Cognates/src/nl/ru/dcc/cognates/distance/AbstractDistance.java
+END

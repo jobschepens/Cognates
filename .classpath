@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry exported="true" kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry exported="true" kind="lib" path="deploy/jsr173_1.0_api.jar"/>
+	<classpathentry exported="true" kind="lib" path="deploy/rosettaschemas.jar"/>
+	<classpathentry exported="true" kind="lib" path="deploy/xbean.jar"/>
+	<classpathentry exported="true" kind="lib" path="deploy/encrypted.jar"/>
+	<classpathentry exported="true" kind="lib" path="deploy/log4j-1.2.12.jar"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>

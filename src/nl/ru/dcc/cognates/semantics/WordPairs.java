@@ -1,0 +1,261 @@
+/**
+ * 
+ */
+package nl.ru.dcc.cognates.semantics;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+import nl.ru.dcc.client.Language;
+import nl.ru.dcc.cognates.exceptions.TooManyTranslationsException;
+import nl.ru.dcc.cognates.semantics.dictionary.DictionaryReaderException;
+import nl.ru.dcc.cognates.semantics.dictionary.MyDictionary;
+import nl.ru.dcc.cognates.types.AbcTranslation;
+import nl.ru.dcc.cognates.types.Info;
+import nl.ru.dcc.cognates.types.SemanticInfo;
+import nl.ru.dcc.cognates.types.Syntax;
+import nl.ru.nici.euroglot.dictionary.Reading;
+import nl.ru.nici.euroglot.dictionary.Relation;
+import nl.ru.nici.euroglot.dictionary.Word;
+
+/**
+ * @author lpxjjs1
+ *
+ */
+public class WordPairs extends Semantics {
+
+	private int step=0;
+	private String filename;
+	/**
+	 * @param language
+	 * @param language2
+	 * @param maxTranslationPairs
+	 * @param threshold
+	 * @param minLength
+	 * @param maxLength
+	 * @param minFrequency
+	 * @param freqType
+	 * @param dataname 
+	 * @throws DictionaryReaderException 
+	 * @throws TooManyTranslationsException 
+	 */
+	public WordPairs(Language language, Language language2,
+			int maxTranslationPairs, double threshold, int minLength, int maxLength, 
+			double minFrequency, String freqType, String wordType, String dataname, 
+			String wordSource, double simRange, boolean withSemantics) throws DictionaryReaderException, TooManyTranslationsException {
+		
+		super(language, language2, maxTranslationPairs, threshold, minLength, maxLength, 
+				minFrequency, freqType, false, simRange);
+		
+		if (withSemantics) {
+			if (wordSource.equals("limited")) {
+				LOGGER.info("Reading dictionary: " + l1);
+				sourceLanguage=new MyDictionary("data/limited/lim"+l1+".xml", wordSource, false);
+			    LOGGER.info("Reading dictionary: " + l2);
+			    destinationLanguage=new MyDictionary("data/limited/lim"+l1+".xml", wordSource, false);
+			}
+			else {
+				LOGGER.info("Reading dictionary: " + l1);
+			    sourceLanguage=new MyDictionary("data/"+l1+".enc", wordSource, false);
+			    LOGGER.info("Reading dictionary: " + l2);
+			    destinationLanguage=new MyDictionary("data/"+l2+".enc", wordSource, false);
+			}
+		}
+		
+		filename="data/" + dataname;
+	}
+
+	/**
+	 * @throws TooManyTranslationsException 
+	 * 
+	 */
+	public void obtainDataWithoutSemantics() throws TooManyTranslationsException {
+//		Map<String, Word> sourceLanguageWords = sourceLanguage.getWordByExpression();
+//		Map<String, Word> destinationLanguageWords = destinationLanguage.getWordByExpression();
+//		sourceLanguageWords = new HashMap<String, Word>();
+//		translationPairs = new HashMap<String, String>();
+		Integer lengthOfList = 0, srcNotFound=0, desNotFound=0, trNotFound=0;
+		// try {
+			// BufferedReader br = new BufferedReader(new FileReader(new File(filename)));
+			try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(new File(filename)), "UTF-8"))) {
+			String line = br.readLine(); //skip header
+			while ((line=br.readLine()) != null) {
+				lengthOfList+=1;
+				String[] list = line.split("\\t");
+				String expression = list[0];
+				String translationFromFile = list[1];
+				// System.out.println(expression + " " + translationFromFile);
+//				double distance = getODistance(expression.toLowerCase(), translationFromFile.toLowerCase());
+//				if (distance>=parameters.getOTHRESHOLD()) {
+					List<String> meanings = new ArrayList<String>();
+					AbcTranslation abcTranslation = new AbcTranslation("");
+					Syntax sourceSyntax = new Syntax("");
+					Syntax destinationSyntax = new Syntax("");
+					Info info = new SemanticInfo(expression,translationFromFile, 
+							sourceSyntax, destinationSyntax, abcTranslation, meanings);
+					//add a new translation pair to the collection
+					linguisticData.put(dicStat.getIdentifiedPairs(), info);
+					dicStat.setIdentifiedPairs(dicStat.getIdentifiedPairs() + 1);
+					dicStat.setTrAboveThreshold(dicStat.getTrAboveThreshold() + 1);
+//				}
+				dicStat.setValidatedTrPairs(dicStat.getValidatedTrPairs() + 1);				      
+				dicStat.setValidatedSrc(dicStat.getValidatedSrc() + 1);
+			}
+			LOGGER.info("Imported " + lengthOfList + " words from " + filename);
+			LOGGER.info(srcNotFound + " L1 words were not found in Euroglot.");
+			LOGGER.info(desNotFound + " L2 words were not found in Euroglot.");
+			LOGGER.info(trNotFound + " translation relations were not found in Euroglot.");
+			
+		}
+		catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		LOGGER.info(dicStat.getValidatedSrc() + " valid expressions");
+		LOGGER.info(dicStat.getValidatedTrPairs() + " valid translation pairs");
+		LOGGER.info(dicStat.getAtr() + " a translations, " + 
+				dicStat.getBtr() + " b translations, " + "and " + 
+				dicStat.getCtr() + " c translations " + "have been found " +
+				"(note that a translations overwrite equal b and c translations when exporting translation pairs)");
+		LOGGER.info(dicStat.getEqt() + " related source expressions have been added to the translation pairs " +
+				"(1 for each shared meaning, and only different expressions)");
+		LOGGER.info("Obtained " + dicStat.getIdentifiedPairs() + " unique translation pairs\n");	
+	}
+
+	/* (non-Javadoc)
+	 * @see nl.ru.dcc.cognates.semantics.Translations#obtainData()
+	 */
+	public void obtainData() throws TooManyTranslationsException {
+
+		Map<String, Word> sourceLanguageWords = sourceLanguage.getWordByExpression();
+		Map<String, Word> destinationLanguageWords = destinationLanguage.getWordByExpression();
+//		sourceLanguageWords = new HashMap<String, Word>();
+//		translationPairs = new HashMap<String, String>();
+		Integer lengthOfList = 0, srcNotFound=0, desNotFound=0, trNotFound=0;
+		boolean added;
+		try {
+			BufferedReader br = new BufferedReader(new FileReader(new File(filename)));
+			String line = br.readLine(); //skip header
+			while ((line=br.readLine()) != null) {
+				lengthOfList+=1;
+				added = false;
+				String[] list = line.split("\\t");
+				String expression = list[0];
+				String translationFromFile = list[1];
+				
+				Word word=sourceLanguageWords.get(expression);
+		    	if (word == null) {
+				    Info info = new SemanticInfo(expression,translationFromFile, 
+							new Syntax(""), new Syntax(""), new AbcTranslation("NA"), new ArrayList<String>());
+					//add a new translation pair to the collection
+					linguisticData.put(dicStat.getIdentifiedPairs(), info);
+					dicStat.setIdentifiedPairs(dicStat.getIdentifiedPairs() + 1);
+					added = true;
+					srcNotFound+=1;
+				} else {
+					Word translation = destinationLanguageWords.get(translationFromFile);
+					if (translation == null) {
+						Info info = new SemanticInfo(expression,translationFromFile, 
+								new Syntax(""), new Syntax(""), new AbcTranslation("NA"), new ArrayList<String>());
+						//add a new translation pair to the collection
+						linguisticData.put(dicStat.getIdentifiedPairs(), info);
+						dicStat.setIdentifiedPairs(dicStat.getIdentifiedPairs() + 1);
+						added = true;
+						desNotFound+=1;
+					} else {
+				        Reading[] reading=word.getReadingArray();
+				        for(int i=0;i<reading.length;i++)
+					    {
+					        String concept=reading[i].getConcept();
+					        //at this point we have a translation pair
+							Reading[] trReading = translation.getReadingArray();
+							for(int k=0;k<trReading.length;k++) {
+								if (trReading[k].getConcept().equals(concept)) {
+									Relation[] relation=reading[i].getRelationArray();
+									Relation[] trRelation=trReading[k].getRelationArray();													
+									for (int j=0;j<relation.length;j++) {													
+					        			for (int l=0;l<trRelation.length;l++) {
+					        				double distance;
+					        				if (parameters.getOTHRESHOLD()!=0) {
+					        					distance = getODistance(expression.toLowerCase(), translation.getExpression().toLowerCase());
+											} else distance = 1;
+											if (distance>=parameters.getOTHRESHOLD()) {
+												if (linguisticData.size()<parameters.getMaxPairs()) {
+							        				AbcTranslation abcTranslation = setABC(relation[j], trRelation[l]);
+													Syntax sourceSyntax = getSyntax(reading[i]);
+													Syntax destinationSyntax = getSyntax(trReading[k]);
+													//simply added a meaning to the specific translation pair
+													if (existingTranslationPair(
+															expression, translation.getExpression(), 
+															sourceSyntax, destinationSyntax,
+															abcTranslation, relation[j], concept)) {
+														dicStat.setEqt(dicStat.getEqt() + 1);
+													}
+													else {
+														List<String> meanings = findRelatedMeaningInSource(relation[j], concept, expression);
+														
+														Info info = new SemanticInfo(expression,translation.getExpression(), 
+																sourceSyntax, destinationSyntax, abcTranslation, meanings);
+														//add a new translation pair to the collection
+														linguisticData.put(dicStat.getIdentifiedPairs(), info);
+														dicStat.setIdentifiedPairs(dicStat.getIdentifiedPairs() + 1);
+														added = true;
+														if (dicStat.getIdentifiedPairs() > (step+1)*(10000)) {
+															step++;
+															System.out.print( step*10000 + ", ");
+														}
+														
+													}
+												} else throw new TooManyTranslationsException("Already more than '%s' identified", parameters.getMaxPairs());
+												dicStat.setTrAboveThreshold(dicStat.getTrAboveThreshold() + 1);
+											}
+											dicStat.setValidatedTrPairs(dicStat.getValidatedTrPairs() + 1);
+					        			}
+									}
+								} 
+							}
+					    }
+				        dicStat.setValidatedSrc(dicStat.getValidatedSrc() + 1);
+					}
+				}
+		    	if (added == false) {
+		    		Info info = new SemanticInfo(expression,translationFromFile, 
+		    				new Syntax(""), new Syntax(""), new AbcTranslation("NA"), new ArrayList<String>());
+					//add a new translation pair to the collection
+					linguisticData.put(dicStat.getIdentifiedPairs(), info);
+					dicStat.setIdentifiedPairs(dicStat.getIdentifiedPairs() + 1);
+					added=true;
+					trNotFound+=1;
+		    	}
+			}
+			LOGGER.info("Imported " + lengthOfList + " words from " + filename);
+			LOGGER.info(srcNotFound + " L1 words were not found in Euroglot.");
+			LOGGER.info(desNotFound + " L2 words were not found in Euroglot.");
+			LOGGER.info(trNotFound + " Translation relations were not found in Euroglot.");
+			
+		}
+		catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		LOGGER.info(dicStat.getValidatedSrc() + " valid expressions");
+		LOGGER.info(dicStat.getValidatedTrPairs() + " valid translation pairs");
+		LOGGER.info(dicStat.getAtr() + " a translations, " + 
+				dicStat.getBtr() + " b translations, " + "and " + 
+				dicStat.getCtr() + " c translations " + "have been found " +
+				"(note that a translations overwrite equal b and c translations when exporting translation pairs)");
+		LOGGER.info(dicStat.getEqt() + " related source expressions have been added to the translation pairs " +
+				"(1 for each shared meaning, and only different expressions)");
+		LOGGER.info("Obtained " + dicStat.getIdentifiedPairs() + " unique translation pairs\n");
+	}
+}
